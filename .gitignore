@@ -1,0 +1,77 @@
+# Python缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+udis-env/
+nl/
+
+# IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# PyTorch模型文件和检查点
+*.pth
+*.pt
+*.ckpt
+Warp/model/
+Composition/model/
+
+# 日志和输出
+*.log
+logs/
+Warp/summary/
+Composition/summary/
+tensorboard/
+runs/
+
+# 数据集和生成的图像
+*.jpg
+*.png
+*.gif
+*.bmp
+*.tif
+*.tiff
+ave_fusion/
+learn_mask1/
+learn_mask2/
+composition/
+Warp/ave_fusion/
+Composition/ave_fusion/
+
+# 生成的掩码和变形图像
+warp1/
+warp2/
+mask1/
+mask2/
+
+# 其他临时文件
+.ipynb_checkpoints/
+*.swp
+*.swo
+.DS_Store
+temp/
+tmp/ 

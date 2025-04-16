@@ -235,33 +235,39 @@ def build_new_ft_model(net, input1_tensor, input2_tensor):
 def get_stitched_result(input1_tensor, input2_tensor, rigid_mesh, mesh):
     batch_size, _, img_h, img_w = input1_tensor.size()
 
+    # 检查设备类型
+    device = input1_tensor.device
+
     rigid_mesh = torch.stack([rigid_mesh[...,0]*img_w/512, rigid_mesh[...,1]*img_h/512], 3)
     mesh = torch.stack([mesh[...,0]*img_w/512, mesh[...,1]*img_h/512], 3)
 
     ######################################
     width_max = torch.max(mesh[...,0])
-    width_max = torch.maximum(torch.tensor(img_w).cuda(), width_max)
+    # 将直接的cuda()调用改为对设备的处理
+    width_max = torch.maximum(torch.tensor(img_w, device=device), width_max)
     width_min = torch.min(mesh[...,0])
-    width_min = torch.minimum(torch.tensor(0).cuda(), width_min)
+    width_min = torch.minimum(torch.tensor(0, device=device), width_min)
     height_max = torch.max(mesh[...,1])
-    height_max = torch.maximum(torch.tensor(img_h).cuda(), height_max)
+    height_max = torch.maximum(torch.tensor(img_h, device=device), height_max)
     height_min = torch.min(mesh[...,1])
-    height_min = torch.minimum(torch.tensor(0).cuda(), height_min)
+    height_min = torch.minimum(torch.tensor(0, device=device), height_min)
 
     out_width = width_max - width_min
     out_height = height_max - height_min
     print(out_width)
     print(out_height)
 
-    warp1 = torch.zeros([batch_size, 3, out_height.int(), out_width.int()]).cuda()
+    # 使用device而非硬编码cuda()
+    warp1 = torch.zeros([batch_size, 3, out_height.int(), out_width.int()], device=device)
     warp1[:,:, int(torch.abs(height_min)):int(torch.abs(height_min))+img_h,  int(torch.abs(width_min)):int(torch.abs(width_min))+img_w] = (input1_tensor+1)*127.5
 
-    mask1 = torch.zeros([batch_size, 3, out_height.int(), out_width.int()]).cuda()
+    # 使用device而非硬编码cuda()
+    mask1 = torch.zeros([batch_size, 3, out_height.int(), out_width.int()], device=device)
     mask1[:,:, int(torch.abs(height_min)):int(torch.abs(height_min))+img_h,  int(torch.abs(width_min)):int(torch.abs(width_min))+img_w] = 255
 
     mask = torch.ones_like(input2_tensor)
-    if torch.cuda.is_available():
-        mask = mask.cuda()
+    # 确保在同一设备上
+    mask = mask.to(device)
 
     # get warped img2
     mesh_trans = torch.stack([mesh[...,0]-width_min, mesh[...,1]-height_min], 3)
@@ -274,7 +280,11 @@ def get_stitched_result(input1_tensor, input2_tensor, rigid_mesh, mesh):
 
     stitched = warp1*(warp1/(warp1+warp2+1e-6)) + warp2*(warp2/(warp1+warp2+1e-6))
 
-    stitched_mesh = draw_mesh_on_warp(stitched[0].cpu().detach().numpy().transpose(1,2,0), mesh_trans[0].cpu().detach().numpy())
+    # CPU兼容的处理方式
+    if device.type == 'cuda':
+        stitched_mesh = draw_mesh_on_warp(stitched[0].cpu().detach().numpy().transpose(1,2,0), mesh_trans[0].cpu().detach().numpy())
+    else:
+        stitched_mesh = draw_mesh_on_warp(stitched[0].detach().numpy().transpose(1,2,0), mesh_trans[0].detach().numpy())
 
     out_dict = {}
     out_dict.update(warp1 = warp1, mask1 = mask1, warp2 = warp2, mask2 = mask2, stitched = stitched, stitched_mesh = stitched_mesh)
@@ -285,6 +295,9 @@ def get_stitched_result(input1_tensor, input2_tensor, rigid_mesh, mesh):
 # for test_output.py
 def build_output_model(net, input1_tensor, input2_tensor):
     batch_size, _, img_h, img_w = input1_tensor.size()
+    
+    # 检查设备类型
+    device = input1_tensor.device
 
     resized_input1 = resize_512(input1_tensor)
     resized_input2 = resize_512(input2_tensor)
@@ -296,9 +309,7 @@ def build_output_model(net, input1_tensor, input2_tensor):
     mesh_motion = torch.stack([mesh_motion[...,0]*img_w/512, mesh_motion[...,1]*img_h/512], 3)
 
     # initialize the source points bs x 4 x 2
-    src_p = torch.tensor([[0., 0.], [img_w, 0.], [0., img_h], [img_w, img_h]])
-    if torch.cuda.is_available():
-        src_p = src_p.cuda()
+    src_p = torch.tensor([[0., 0.], [img_w, 0.], [0., img_h], [img_w, img_h]], device=device)
     src_p = src_p.unsqueeze(0).expand(batch_size, -1, -1)
     # target points
     dst_p = src_p + H_motion
@@ -311,13 +322,13 @@ def build_output_model(net, input1_tensor, input2_tensor):
     mesh = ini_mesh + mesh_motion
 
     width_max = torch.max(mesh[...,0])
-    width_max = torch.maximum(torch.tensor(img_w).cuda(), width_max)
+    width_max = torch.maximum(torch.tensor(img_w, device=device), width_max)
     width_min = torch.min(mesh[...,0])
-    width_min = torch.minimum(torch.tensor(0).cuda(), width_min)
+    width_min = torch.minimum(torch.tensor(0, device=device), width_min)
     height_max = torch.max(mesh[...,1])
-    height_max = torch.maximum(torch.tensor(img_h).cuda(), height_max)
+    height_max = torch.maximum(torch.tensor(img_h, device=device), height_max)
     height_min = torch.min(mesh[...,1])
-    height_min = torch.minimum(torch.tensor(0).cuda(), height_min)
+    height_min = torch.minimum(torch.tensor(0, device=device), height_min)
 
     out_width = width_max - width_min
     out_height = height_max - height_min
@@ -327,27 +338,24 @@ def build_output_model(net, input1_tensor, input2_tensor):
     # get warped img1
     M_tensor = torch.tensor([[out_width / 2.0, 0., out_width / 2.0],
                       [0., out_height / 2.0, out_height / 2.0],
-                      [0., 0., 1.]])
+                      [0., 0., 1.]], device=device)
     N_tensor = torch.tensor([[img_w / 2.0, 0., img_w / 2.0],
                       [0., img_h / 2.0, img_h / 2.0],
-                      [0., 0., 1.]])
-    if torch.cuda.is_available():
-        M_tensor = M_tensor.cuda()
-        N_tensor = N_tensor.cuda()
+                      [0., 0., 1.]], device=device)
     N_tensor_inv = torch.inverse(N_tensor)
 
     I_ = torch.tensor([[1., 0., width_min],
                       [0., 1., height_min],
-                      [0., 0., 1.]])#.unsqueeze(0)
+                      [0., 0., 1.]], device=device)#.unsqueeze(0)
     mask = torch.ones_like(input2_tensor)
-    if torch.cuda.is_available():
-        I_ = I_.cuda()
-        mask = mask.cuda()
+    mask = mask.to(device)
     I_mat = torch.matmul(torch.matmul(N_tensor_inv, I_), M_tensor).unsqueeze(0)
 
     homo_output = torch_homo_transform.transformer(torch.cat((input1_tensor+1, mask), 1), I_mat, (out_height.int(), out_width.int()))
 
-    torch.cuda.empty_cache()
+    # 只在GPU模式下清空缓存
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()
     # get warped img2
     mesh_trans = torch.stack([mesh[...,0]-width_min, mesh[...,1]-height_min], 3)
     norm_rigid_mesh = get_norm_mesh(rigid_mesh, img_h, img_w)
