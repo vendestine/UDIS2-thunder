@@ -51,18 +51,29 @@ def test_other(args):
 
     os.environ['CUDA_DEVICES_ORDER'] = "PCI_BUS_ID"
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    
+    # 确定设备：如果GPU可用且用户没有指定-1，则使用GPU，否则使用CPU
+    use_cuda = torch.cuda.is_available() and args.gpu != '-1'
+    device = torch.device("cuda" if use_cuda else "cpu")
+    
+    print(f"使用设备: {device}")
 
     # define the network
     net = Network()
-    if torch.cuda.is_available():
-        net = net.cuda()
+    net = net.to(device)
 
     #load the existing models if it exists
     ckpt_list = glob.glob(MODEL_DIR + "/*.pth")
     ckpt_list.sort()
     if len(ckpt_list) != 0:
         model_path = ckpt_list[-1]
-        checkpoint = torch.load(model_path)
+        
+        # 根据设备加载模型
+        if use_cuda:
+            checkpoint = torch.load(model_path)
+        else:
+            checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
+            
         net.load_state_dict(checkpoint['model'])
         print('load model from {}!'.format(model_path))
     else:
@@ -72,11 +83,11 @@ def test_other(args):
 
     # load dataset(only one pair of images)
     warp1_tensor, warp2_tensor, mask1_tensor, mask2_tensor = loadSingleData(data_path=args.path)
-    if torch.cuda.is_available():
-        warp1_tensor = warp1_tensor.cuda()
-        warp2_tensor = warp2_tensor.cuda()
-        mask1_tensor = mask1_tensor.cuda()
-        mask2_tensor = mask2_tensor.cuda()
+    # 将张量移动到正确的设备上
+    warp1_tensor = warp1_tensor.to(device)
+    warp2_tensor = warp2_tensor.to(device)
+    mask1_tensor = mask1_tensor.to(device)
+    mask2_tensor = mask2_tensor.to(device)
 
     net.eval()
     with torch.no_grad():
@@ -108,13 +119,14 @@ def test_other(args):
     path = args.path + "composition.jpg"
     cv2.imwrite(path, stitched_image)
 
+    print(f"处理完成！结果已保存到: {args.path}")
 
 
 if __name__=="__main__":
 
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('--gpu', type=str, default='0')
+    
+    parser.add_argument('--gpu', type=str, default='0', help='GPU ID，设置为-1表示使用CPU')
     parser.add_argument('--path', type=str, default='../../Carpark-DHW/')
 
     print('<==================== Loading data ===================>\n')
