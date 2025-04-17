@@ -48,13 +48,59 @@ Composition/summary/
 tensorboard/
 runs/
 
-# 数据集和生成的图像
-*.jpg
-*.png
-*.gif
-*.bmp
-*.tif
-*.tiff
+# 所有目录下的图像文件
+**/*.jpg
+**/*.jpeg
+**/*.png
+**/*.gif
+**/*.bmp
+**/*.tif
+**/*.tiff
+**/*.webp
+**/*.svg
+**/*.ico
+**/*.raw
+**/*.heic
+**/*.heif
+**/*.psd
+**/*.ai
+**/*.eps
+
+# 所有目录下的视频文件
+**/*.mp4
+**/*.avi
+**/*.mov
+**/*.wmv
+**/*.flv
+**/*.mkv
+**/*.webm
+**/*.m4v
+**/*.mpg
+**/*.mpeg
+**/*.3gp
+**/*.asf
+**/*.rm
+**/*.rmvb
+**/*.vob
+**/*.ogv
+
+# 所有目录下的文本文件
+**/*.txt
+**/*.doc
+**/*.docx
+**/*.pdf
+**/*.odt
+**/*.rtf
+**/*.tex
+**/*.wps
+**/*.csv
+**/*.tsv
+**/*.xls
+**/*.xlsx
+**/*.ppt
+**/*.pptx
+
+# 生成的目录
 ave_fusion/
 learn_mask1/
 learn_mask2/
@@ -70,8 +116,12 @@ mask2/
 
 # 其他临时文件
 .ipynb_checkpoints/
-*.swp
-*.swo
-.DS_Store
+**/*.swp
+**/*.swo
+**/.DS_Store
 temp/
-tmp/ 
+tmp/
+
+# 特别指定目录
+Fisheye/fisheye-4eyes.mp4
+Fisheye/extracted_fisheye_frames/ 
